@@ -1,72 +1,69 @@
 from flask import Flask, request, jsonify
 import pickle
+import numpy as np
 
-# Lista de clases (especies de pingüinos)
-classes = ['Adelie', 'Chinstrap', 'Gentoo']
+# Clases de especies de pingüinos
+classes = ["Adelie", "Chinstrap", "Gentoo"]
 
-# Predicción para una sola entrada
-def predict_single(pingu, sc, model):
-    features = [[
-        pingu["bill_length_mm"],
-        pingu["bill_depth_mm"],
-        pingu["flipper_length_mm"],
-        pingu["body_mass_g"],
-        pingu["island_Biscoe"],
-        pingu["island_Dream"],
-        pingu["island_Torgersen"],
-        pingu["sex_Female"],
-        pingu["sex_Male"]
-    ]]
-    features_std = sc.transform(features)
+# Función para predecir una sola muestra
+def predict_single(penguin, dv, sc, model):
+    # Procesar datos categóricos y numéricos
+    penguin_categorical = dv.transform([{"island": penguin["island"], "sex": penguin["sex"]}])
+    penguin_numerical = sc.transform([[penguin["bill_length_mm"], penguin["bill_depth_mm"],
+                                       penguin["flipper_length_mm"], penguin["body_mass_g"]]])
     
-    #Predicción de la clase y probabilidad
-    y_pred = model.predict(features_std)[0]
-    y_prob = model.predict_proba(features_std)[0][y_pred]
+    # Concatenar características
+    penguin_features = np.hstack([penguin_categorical, penguin_numerical])
+    print("predict_single para la prediccion:",penguin_features)
+    
+    # Realizar predicción
+    y_pred = model.predict(penguin_features)[0]
+    y_prob = model.predict_proba(penguin_features)[0][model.classes_.tolist().index(y_pred)]
     return y_pred, y_prob
 
-
-def predict(sc, model):
-    
-    pingu = request.get_json()
-    
-    # Llamar a predict_single para obtener predicción y probabilidad
-    especie, probabilidad = predict_single(pingu, sc, model)
+# Función para manejar predicciones
+def predict(dv, sc, model):
+    # Obtener JSON enviado por el cliente
+    penguin = request.get_json()
+    species, probability = predict_single(penguin, dv, sc, model)
     
     result = {
-        'especie': classes[especie],
-        'probabilidad': float(probabilidad)
+        "species": classes[species],
+        "probability": float(probability)
     }
     return jsonify(result)
 
+# Crear aplicación Flask
+app = Flask("penguin-species")
 
-app = Flask('pingu')
-
-# Rutas para cada modelo
-@app.route('/predict_lr', methods=['POST'])
+# Endpoint para predicción con Regresión Logística
+@app.route("/predict_lr", methods=["POST"])
 def predict_lr():
-    with open('modelos/lr.pck', 'rb') as f:
-        sc, model = pickle.load(f)
-    return predict(sc,model)
+    with open("modelos\lr.pck", "rb") as f:
+        dv, sc, model = pickle.load(f)
+    return predict(dv, sc, model)
 
-@app.route('/predict_svm', methods=['POST'])
+# Endpoint para predicción con SVM
+@app.route("/predict_svm", methods=["POST"])
 def predict_svm():
-    with open('modelos/svm.pck', 'rb') as f:
-        sc, model = pickle.load(f)
-    return predict(sc,model)
+    with open("modelos\svm.pck", "rb") as f:
+        dv, sc, model = pickle.load(f)
+    return predict(dv, sc, model)
 
-@app.route('/predict_dt', methods=['POST'])
+# Endpoint para predicción con Árbol de Decisión
+@app.route("/predict_dt", methods=["POST"])
 def predict_dt():
-    with open('modelos/dt.pck', 'rb') as f:
-        sc, model = pickle.load(f)
-    return predict(sc,model)
+    with open("modelos\dt.pck", "rb") as f:
+        dv, model = pickle.load(f)  # Árbol de decisión no usa el escalador
+    return predict(dv, None, model)
 
-@app.route('/predict_knn', methods=['POST'])
+# Endpoint para predicción con KNN
+@app.route("/predict_knn", methods=["POST"])
 def predict_knn():
-    with open('modelos/knn.pck', 'rb') as f:
-        sc, model = pickle.load(f)
-    return predict(sc,model)
+    with open("modelos\knn.pck", "rb") as f:
+        dv, sc, model = pickle.load(f)
+    return predict(dv, sc, model)
 
-
-# Ejecutar la app
+# Ejecutar servidor
 if __name__ == "__main__":
     app.run(debug=True, port=8000)
