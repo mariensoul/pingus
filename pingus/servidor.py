@@ -38,28 +38,28 @@ app = Flask("penguin-species")
 
 @app.route("/predict_lr", methods=["POST"])
 def predict_lr():
-    with open("modelos\lr.pck", "rb") as f:
+    with open("modelos\\lr.pck", "rb") as f:
         dv, sc, model = pickle.load(f)
     return predict(dv, sc, model)
 
 
 @app.route("/predict_svm", methods=["POST"])
 def predict_svm():
-    with open("modelos\svm.pck", "rb") as f:
+    with open("modelos\\svm.pck", "rb") as f:
         dv, sc, model = pickle.load(f)
     return predict(dv, sc, model)
 
 
 @app.route("/predict_dt", methods=["POST"])
 def predict_dt():
-    with open("modelos\dt.pck", "rb") as f:
+    with open("modelos\\dt.pck", "rb") as f:
         dv, model = pickle.load(f)  # Árbol de decisión no usa el escalador
     return predict(dv, None, model)
 
 
 @app.route("/predict_knn", methods=["POST"])
 def predict_knn():
-    with open("modelos\knn.pck", "rb") as f:
+    with open("modelos\\knn.pck", "rb") as f:
         dv, sc, model = pickle.load(f)
     return predict(dv, sc, model)
 
